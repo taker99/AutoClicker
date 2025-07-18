@@ -1,0 +1,33 @@
+# UTF-8
+#
+# For more info: https://pyinstaller.org/en/stable/usage.html#embedding-version-information
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x4,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+    ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040704b0',
+        [StringStruct('CompanyName', 'taker-Development'),
+        StringStruct('CompanyWebsite', 'https://evergreen-comunity.de/'),
+        StringStruct('Comments', 'Mehr Infos: https://evergreen-comunity.de/'),
+        StringStruct('FileDescription', 'Passwort Generator by taker'),
+        StringStruct('FileVersion', '1.0.0.0'),
+        StringStruct('InternalName', 'PasswortGeneratorbytaker'),
+        StringStruct('LegalCopyright', 'Copyright © 2025 taker'),
+        StringStruct('OriginalFilename', 'PasswortGeneratorbytaker.exe'),
+        StringStruct('ProductName', 'Passwort Generator'),
+        StringStruct('ProductVersion', '1.0.0.0'),
+        StringStruct('Support', 'Discord: https://discord.gg/RgFq5XgyAv')])
+      ]),
+    VarFileInfo([VarStruct('Translation', [1031, 1200])])
+  ]
+)
