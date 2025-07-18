@@ -4,7 +4,6 @@ import os
 import threading
 import time
 from pynput import mouse, keyboard
-import pygame
 import sys
 try:
     import pystray
@@ -267,25 +266,6 @@ class AutoClickerApp(ctk.CTk):
         if self.pynput_mouse_listener is None:
             self.pynput_mouse_listener = mouse.Listener(on_click=self.on_mouse_click)
             self.pynput_mouse_listener.start()
-        # Start controller polling
-        self.poll_controller()
-
-    def poll_controller(self):
-        try:
-            if self.controller_hotkey is not None and self.joystick is not None:
-                for i in range(self.joystick.get_numbuttons()):
-                    if self.joystick.get_button(i):
-                        if self.controller_hotkey == i:
-                            if self.mode.get() == "Toggle":
-                                self.toggle_clicking()
-                            elif self.mode.get() == "Hold" and not self.clicking:
-                                self.toggle_clicking()
-                    elif self.mode.get() == "Hold" and self.controller_hotkey == i and self.clicking:
-                        self.clicking = False
-                        self.set_status("Bereit", color="green")
-            self.after(100, self.poll_controller)
-        except Exception as e:
-            self.set_status(f"Controller-Fehler: {e}", color="red", is_error=True)
 
     def on_key_press(self, key):
         try:
@@ -488,45 +468,6 @@ class AutoClickerApp(ctk.CTk):
                     pass
         m_listener = mouse.Listener(on_click=on_click)
         m_listener.start()
-        # Controller
-        self.after(100, lambda: self.check_controller_hotkey_once(listener, m_listener))
-
-    def check_controller_hotkey_once(self, listener, m_listener):
-        if hasattr(self, 'joystick') and self.joystick is not None and not getattr(self, '_hotkey_set', False):
-            for i in range(self.joystick.get_numbuttons()):
-                if self.joystick.get_button(i):
-                    self.controller_hotkey = i
-                    self.hotkey.set(f'Controller-{i}')
-                    self.save_settings()
-                    self.setting_hotkey = False
-                    self.set_status("Bereit", color="green")
-                    self._hotkey_set = True
-                    try:
-                        listener.stop()
-                    except Exception:
-                        pass
-                    try:
-                        m_listener.stop()
-                    except Exception:
-                        pass
-                    return
-        if not getattr(self, '_hotkey_set', False):
-            self.after(100, lambda: self.check_controller_hotkey_once(listener, m_listener))
-
-    def init_pygame_joystick(self):
-        try:
-            pygame.init()
-            pygame.joystick.init()
-            if pygame.joystick.get_count() > 0:
-                self.joystick = pygame.joystick.Joystick(0)
-                self.joystick.init()
-                self.set_status("Controller erkannt", color="green")
-            else:
-                self.joystick = None
-                self.set_status("Kein Controller gefunden", color="orange")
-        except Exception as e:
-            self.joystick = None
-            self.set_status(f"Controller-Init-Fehler: {e}", color="red", is_error=True)
 
     def failsafe_trigger(self):
         self.clicking = False
