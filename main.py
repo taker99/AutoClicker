@@ -16,24 +16,106 @@ SETTINGS_FILE = "settings.json"
 class AutoClickerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Speed Auto Clicker by taker")
+        self.language = ctk.StringVar(value="en")
+        self.translations = {
+            "en": {
+                "title": "Speed Auto Clicker by taker",
+                "cps": "Clicks per Second:",
+                "mouse_button": "Mouse Button:",
+                "hotkey": "Hotkey:",
+                "change_hotkey": "Change Hotkey",
+                "mode": "Mode:",
+                "toggle": "Toggle",
+                "hold": "Hold",
+                "save": "Save",
+                "exit": "Exit",
+                "ready": "Ready",
+                "active": "AutoClicker active",
+                "active_hold": "AutoClicker (Hold)",
+                "error": "Error",
+                "not_allowed": "Not allowed in the selected program!",
+                "choose_hotkey": "Choose hotkey...",
+                "settings": "Settings",
+                "theme": "Theme:",
+                "dark_mode": "Dark Mode",
+                "minimize_tray": "Minimize to tray on close",
+                "failsafe_key": "Failsafe key:",
+                "failsafe_hint": "Key that always stops the clicker immediately (e.g. ESC, F12, F10, Q ...)",
+                "only_active": "Only active in this application:",
+                "select_app": "Select an application where the AutoClicker is allowed to run. 'All applications' = everywhere.",
+                "all_apps": "All applications",
+                "load_procs": "Loading processes...",
+                "tray_open": "Open",
+                "tray_exit": "Exit",
+                "failsafe_active": "Failsafe active",
+                "failsafe_active_s": "Failsafe active ({secs}s)",
+                "fehler": "Error",
+                "toggle_tooltip": "Toggle: On/Off, Hold: While pressed",
+                "mouse_tooltip": "Which mouse button should be clicked?",
+                "hotkey_tooltip": "Key/Mouse to start/stop",
+                "hotkey_btn_tooltip": "Set new hotkey",
+                "language": "Language:",
+            },
+            "de": {
+                "title": "Speed Auto Clicker von taker",
+                "cps": "Klicks pro Sekunde:",
+                "mouse_button": "Maustaste:",
+                "hotkey": "Hotkey:",
+                "change_hotkey": "Hotkey ändern",
+                "mode": "Modus:",
+                "toggle": "Umschalten",
+                "hold": "Halten",
+                "save": "Speichern",
+                "exit": "Beenden",
+                "ready": "Bereit",
+                "active": "AutoClicker aktiv",
+                "active_hold": "AutoClicker (Halten)",
+                "error": "Fehler",
+                "not_allowed": "Nicht im gewählten Programm!",
+                "choose_hotkey": "Hotkey wählen...",
+                "settings": "Einstellungen",
+                "theme": "Thema:",
+                "dark_mode": "Dunkler Modus",
+                "minimize_tray": "Beim Schließen ins Tray minimieren",
+                "failsafe_key": "Failsafe-Taste:",
+                "failsafe_hint": "Taste, die den Clicker sofort stoppt (z.B. ESC, F12, F10, Q ...)",
+                "only_active": "Nur in dieser Anwendung aktiv:",
+                "select_app": "Wähle eine Anwendung, in der der AutoClicker laufen darf. 'Alle Anwendungen' = überall.",
+                "all_apps": "Alle Anwendungen",
+                "load_procs": "Lade Prozesse...",
+                "tray_open": "Öffnen",
+                "tray_exit": "Beenden",
+                "failsafe_active": "Failsafe aktiv",
+                "failsafe_active_s": "Failsafe aktiv ({secs}s)",
+                "fehler": "Fehler",
+                "toggle_tooltip": "Umschalten: An/Aus, Halten: Solange gedrückt",
+                "mouse_tooltip": "Welche Maustaste soll geklickt werden?",
+                "hotkey_tooltip": "Taste/Maus zum Starten/Stoppen",
+                "hotkey_btn_tooltip": "Neuen Hotkey setzen",
+                "language": "Sprache:",
+            }
+        }
+        self.title(self.t("title"))
         self.geometry("400x700")
         self.resizable(False, False)
-    
         ctk.set_default_color_theme("green")
         self.kps = ctk.IntVar(value=10)
-        self.button_choice = ctk.StringVar(value="right")  # Standard: Rechtsklick
+        # Button mapping: 0=left, 1=right, 2=middle
+        self.button_map = {0: "left", 1: "right", 2: "middle"}
+        self.button_names = {
+            "en": ["Left", "Right", "Middle"],
+            "de": ["Links", "Rechts", "Mitte"]
+        }
+        self.button_choice = ctk.IntVar(value=1)  # default: right
+        self.button_name_to_idx = {
+            "Left": 0, "Right": 1, "Middle": 2,
+            "Links": 0, "Rechts": 1, "Mitte": 2
+        }
         self.hotkey = ctk.StringVar(value="F6")
-        self.mode = ctk.StringVar(value="Hold")  # Standard: Halten
-
-        # Initialisiere Hilfsvariablen für Map und Theme-Mode
-        self.button_map = {"Links": "left", "Rechts": "right", "Mitte": "middle"}
+        self.mode = ctk.StringVar(value="Hold")
         self.theme_mode = ctk.StringVar(value="Dark")
-
-        # Erweiterte Einstellungen als Attribute (für Settings-Dialog und Save/Load)
         self.minimize_to_tray_var = ctk.BooleanVar(value=False)
         self.failsafe_key = ctk.StringVar(value="F9")
-
         self.clicking = False
         self.listener_thread = None
         self.click_thread = None
@@ -43,61 +125,119 @@ class AutoClickerApp(ctk.CTk):
         self.setting_hotkey = False
         self.failsafe_active = False
         self.failsafe_time = 0
-
-        # Icon für das Tray-Menü (immer verfügbar)
         try:
             from PIL import Image, ImageDraw
             self.iconbitmap(icon_path)
         except Exception:
             pass
-
         self.create_widgets()
         self.load_settings()
         self.after(100, self.start_hotkey_listener)
-        #self.init_pygame_joystick()
+
+    def t(self, key):
+        lang = self.language.get()
+        val = self.translations.get(lang, self.translations["en"]).get(key, key)
+        return val if val is not None else str(key)
+
+    def update_language(self, *_):
+        self.title(self.t("title"))
+        # Update all widgets' text
+        for w, key in getattr(self, '_lang_widgets', []):
+            w.configure(text=self.t(key))
+        # Update tooltips
+        for tip, key in getattr(self, '_tooltips', []):
+            tip.configure(text=self.t(key))
+        # Update mouse button menu
+        if hasattr(self, 'mouse_menu'):
+            names = self.button_names[self.language.get()]
+            self.mouse_menu.configure(values=names)
+            idx = self.button_choice.get()
+            self.mouse_menu.set(names[idx])
+        # Update settings window if open
+        if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
+            self.update_settings_language()
+
+    def update_settings_language(self):
+        # Update settings window texts
+        for w, key in getattr(self, '_settings_lang_widgets', []):
+            if isinstance(w, ctk.CTkOptionMenu):
+                continue
+            else:
+                w.configure(text=self.t(key))
+        for tip, key in getattr(self, '_settings_tooltips', []):
+            tip.configure(text=self.t(key))
+        # Update process dropdown menu values and selection
+        if hasattr(self, 'process_menu') and hasattr(self, 'selected_process'):
+            # Rebuild display names
+            process_list = self.get_user_processes()
+            process_ids = ["all_apps"]
+            for pid, name in process_list:
+                process_ids.append(name)
+            display_names = [self.t("all_apps") if pid == "all_apps" else pid for pid in process_ids]
+            self.process_menu.configure(values=display_names)
+            # Update selected value if needed
+            current = self.selected_process.get()
+            if current == "all_apps" or current in ["All applications", "Alle Anwendungen"]:
+                self.selected_process.set(self.t("all_apps"))
 
     def create_widgets(self):
-        # Gruppierung: Klickrate
-        ctk.CTkLabel(self, text="Klicks pro Sekunde:", font=("Arial", 13)).pack(pady=(15, 0))
+        self._lang_widgets = []
+        self._tooltips = []
+        # CPS
+        cps_label = ctk.CTkLabel(self, text=self.t("cps"), font=("Arial", 13))
+        cps_label.pack(pady=(15, 0))
+        self._lang_widgets.append((cps_label, "cps"))
         ctk.CTkSlider(self, from_=1, to=100, variable=self.kps, number_of_steps=99, width=250).pack(pady=5)
         ctk.CTkLabel(self, textvariable=self.kps, font=("Arial", 12, "bold")).pack()
-
-        # Maustaste & Hotkey
-        ctk.CTkLabel(self, text="Maustaste:", font=("Arial", 13)).pack(pady=(15, 0))
-        mouse_menu = ctk.CTkOptionMenu(self, variable=self.button_choice, values=list(self.button_map.keys()))
+        # Mouse Button
+        mouse_label = ctk.CTkLabel(self, text=self.t("mouse_button"), font=("Arial", 13))
+        mouse_label.pack(pady=(15, 0))
+        self._lang_widgets.append((mouse_label, "mouse_button"))
+        def on_mouse_menu_select(choice):
+            idx = self.button_name_to_idx.get(choice, 1)
+            self.button_choice.set(idx)
+        mouse_menu = ctk.CTkOptionMenu(self, variable=ctk.StringVar(value=self.button_names[self.language.get()][self.button_choice.get()]),
+                                       values=self.button_names[self.language.get()],
+                                       command=on_mouse_menu_select)
         mouse_menu.pack(pady=5)
-        # Tooltip für Maustaste
-
-        ctk.CTkLabel(self, text="Hotkey:", font=("Arial", 13)).pack(pady=(15, 0))
+        self.mouse_menu = mouse_menu
+        self.mouse_menu_var = mouse_menu.cget("variable")
+        # Hotkey
+        hotkey_label = ctk.CTkLabel(self, text=self.t("hotkey"), font=("Arial", 13))
+        hotkey_label.pack(pady=(15, 0))
+        self._lang_widgets.append((hotkey_label, "hotkey"))
         hotkey_entry = ctk.CTkEntry(self, textvariable=self.hotkey, width=100, state="readonly")
         hotkey_entry.pack(pady=5)
-        hotkey_btn = ctk.CTkButton(self, text="Hotkey ändern", command=self.change_hotkey)
+        hotkey_btn = ctk.CTkButton(self, text=self.t("change_hotkey"), command=self.change_hotkey)
         hotkey_btn.pack(pady=5)
-        # Tooltip für Hotkey
-
-        # Modus
-        ctk.CTkLabel(self, text="Modus:", font=("Arial", 13)).pack(pady=(15, 0))
-        mode_menu = ctk.CTkOptionMenu(self, variable=self.mode, values=["Toggle", "Hold"])
+        self._lang_widgets.append((hotkey_btn, "change_hotkey"))
+        # Mode
+        mode_label = ctk.CTkLabel(self, text=self.t("mode"), font=("Arial", 13))
+        mode_label.pack(pady=(15, 0))
+        self._lang_widgets.append((mode_label, "mode"))
+        mode_menu = ctk.CTkOptionMenu(self, variable=self.mode, values=[self.t("toggle"), self.t("hold")])
         mode_menu.pack(pady=5)
-        # Tooltip für Modus
-
-        # Aktionen
-        ctk.CTkButton(self, text="Speichern", command=self.save_settings).pack(pady=(20, 0))
-        ctk.CTkButton(self, text="Beenden", command=self.destroy).pack(pady=5)
-
-        # Statusbereich
+        # Save/Exit
+        save_btn = ctk.CTkButton(self, text=self.t("save"), command=self.save_settings)
+        save_btn.pack(pady=(20, 0))
+        self._lang_widgets.append((save_btn, "save"))
+        exit_btn = ctk.CTkButton(self, text=self.t("exit"), command=self.destroy)
+        exit_btn.pack(pady=5)
+        self._lang_widgets.append((exit_btn, "exit"))
+        # Status
         self.status_frame = ctk.CTkFrame(self, fg_color="#4cce84", border_width=2, border_color="#8fe68f")
         self.status_frame.pack(pady=(20, 0), padx=10, fill="x")
-        self.status_label = ctk.CTkLabel(self.status_frame, text="Bereit", text_color="#000000", font=("Arial", 13, "bold"))
+        self.status_label = ctk.CTkLabel(self.status_frame, text=self.t("ready"), text_color="#000000", font=("Arial", 13, "bold"))
         self.status_label.pack(pady=(8, 0))
+        self._lang_widgets.append((self.status_label, "ready"))
         self.error_label = ctk.CTkLabel(self.status_frame, text="", text_color="#000000", font=("Arial", 11))
         self.error_label.pack(pady=(2, 8))
-
-        # Tooltips als schwebende Labels (ohne Attributbindung)
-        def add_tooltip(widget, text):
+        # Tooltips
+        def add_tooltip(widget, key):
             def get_bg():
                 return "#222222" if ctk.get_appearance_mode() == "Dark" else "#f4f4f4"
-            tooltip = ctk.CTkLabel(self, text=text, font=("Arial", 10), text_color="#888", bg_color=get_bg(), wraplength=250, justify="left")
+            tooltip = ctk.CTkLabel(self, text=self.t(key), font=("Arial", 10), text_color="#888", bg_color=get_bg(), wraplength=250, justify="left")
+            self._tooltips.append((tooltip, key))
             def show(event):
                 tooltip.configure(bg_color=get_bg())
                 x = widget.winfo_rootx() - self.winfo_rootx() + 10
@@ -113,13 +253,11 @@ class AutoClickerApp(ctk.CTk):
                 tooltip.place_forget()
             widget.bind("<Enter>", show)
             widget.bind("<Leave>", hide)
-
-        add_tooltip(mouse_menu, "Welche Maustaste soll geklickt werden?")
-        add_tooltip(hotkey_entry, "Taste/Maus/Controller zum Starten/Stoppen")
-        add_tooltip(hotkey_btn, "Neuen Hotkey festlegen")
-        add_tooltip(mode_menu, "Toggle: Ein/Aus, Hold: Nur solange gedrückt")
-
-        # Zahnrad-Icon für Settings-Menü (gear.png, immer sichtbar oben rechts)
+        add_tooltip(mouse_menu, "mouse_tooltip")
+        add_tooltip(hotkey_entry, "hotkey_tooltip")
+        add_tooltip(hotkey_btn, "hotkey_btn_tooltip")
+        add_tooltip(mode_menu, "toggle_tooltip")
+        # Settings icon
         try:
             from PIL import Image
             gear_img = Image.open(os.path.join(os.path.dirname(__file__), "gear.png"))
@@ -128,62 +266,74 @@ class AutoClickerApp(ctk.CTk):
         except Exception:
             self.settings_icon = ctk.CTkButton(self, text="⚙", width=32, height=32, command=self.open_settings, fg_color="transparent")
         self.settings_icon.place(x=360, y=10)
+        # Update language on startup
+        self.language.trace_add('write', self.update_language)
+        # Removed self.update_language() to prevent recursion
 
     def open_settings(self):
         if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
             self.settings_window.lift()
             return
         self.settings_window = ctk.CTkToplevel(self)
-        self.settings_window.title("Einstellungen")
-        self.settings_window.geometry("320x340")
+        self.settings_window.title(self.t("settings"))
+        self.settings_window.geometry("320x380")
         self.settings_window.resizable(False, False)
+        self._settings_lang_widgets = []
         self._settings_tooltips = []
-        # Theme
-        ctk.CTkLabel(self.settings_window, text="Theme:", font=("Arial", 13)).pack(pady=(15, 0))
-        ctk.CTkSwitch(self.settings_window, text="Dark Mode", variable=self.theme_mode, onvalue="Dark", offvalue="Light", command=self.toggle_theme).pack(pady=5)
-        # Tray
-        ctk.CTkCheckBox(self.settings_window, text="Beim Schließen ins Tray minimieren", variable=self.minimize_to_tray_var).pack(anchor="w", pady=(15, 0), padx=20)
-        # Failsafe
-        ctk.CTkLabel(self.settings_window, text="Failsafe-Taste:").pack(anchor="w", padx=20, pady=(15, 0))
+        lang_label = ctk.CTkLabel(self.settings_window, text=self.t("language"), font=("Arial", 13))
+        lang_label.pack(pady=(15, 0))
+        self._settings_lang_widgets.append((lang_label, "language"))
+        lang_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.language, values=["en", "de"], command=lambda _: self.save_settings())
+        lang_menu.pack(pady=5)
+        self._settings_lang_widgets.append((lang_menu, "language"))
+        theme_label = ctk.CTkLabel(self.settings_window, text=self.t("theme"), font=("Arial", 13))
+        theme_label.pack(pady=(15, 0))
+        self._settings_lang_widgets.append((theme_label, "theme"))
+        theme_switch = ctk.CTkSwitch(self.settings_window, text=self.t("dark_mode"), variable=self.theme_mode, onvalue="Dark", offvalue="Light", command=self.toggle_theme)
+        theme_switch.pack(pady=5)
+        self._settings_lang_widgets.append((theme_switch, "dark_mode"))
+        tray_check = ctk.CTkCheckBox(self.settings_window, text=self.t("minimize_tray"), variable=self.minimize_to_tray_var)
+        tray_check.pack(anchor="w", pady=(15, 0), padx=20)
+        self._settings_lang_widgets.append((tray_check, "minimize_tray"))
+        failsafe_label = ctk.CTkLabel(self.settings_window, text=self.t("failsafe_key"))
+        failsafe_label.pack(anchor="w", padx=20, pady=(15, 0))
+        self._settings_lang_widgets.append((failsafe_label, "failsafe_key"))
         failsafe_entry = ctk.CTkEntry(self.settings_window, textvariable=self.failsafe_key, width=100)
         failsafe_entry.pack(anchor="w", padx=20, pady=(0, 5))
-        # Prozessauswahl (asynchron laden)
-        ctk.CTkLabel(self.settings_window, text="Nur aktiv in Anwendung:").pack(anchor="w", padx=20, pady=(15, 0))
+        only_active_label = ctk.CTkLabel(self.settings_window, text=self.t("only_active"))
+        only_active_label.pack(anchor="w", padx=20, pady=(15, 0))
+        self._settings_lang_widgets.append((only_active_label, "only_active"))
+
         if not hasattr(self, 'selected_process'):
-            self.selected_process = ctk.StringVar(value="Alle Anwendungen")
-        self.process_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.selected_process, values=["Lade Prozesse..."])
+            self.selected_process = ctk.StringVar(value="all_apps")
+        self.process_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.selected_process, values=[self.t("load_procs")])
         self.process_menu.pack(anchor="w", padx=20, pady=(0, 5))
         self.process_menu.configure(state="disabled")
         def fill_process_menu():
             process_list = self.get_user_processes()
-            process_names = []
+            process_ids = ["all_apps"]
             for pid, name in process_list:
-                if isinstance(pid, list):
-                    process_names.append(f"{name} (alle Instanzen)")
-                else:
-                    process_names.append(f"{name} (PID {pid})")
-            process_names.insert(0, "Alle Anwendungen")
+                process_ids.append(name)
+            # Translate for display
+            display_names = [self.t("all_apps") if pid == "all_apps" else pid for pid in process_ids]
             def update_menu():
-                self.process_menu.configure(values=process_names, state="normal")
-                # Auswahl wiederherstellen, falls vorhanden
-                if hasattr(self, 'selected_process') and self.selected_process.get() in process_names:
-                    self.process_menu.set(self.selected_process.get())
-                else:
-                    self.process_menu.set("Alle Anwendungen")
+                self.process_menu.configure(values=display_names, state="normal")
+                # Set correct display value
+                current = self.selected_process.get()
+                if current == "all_apps":
+                    self.selected_process.set(self.t("all_apps"))
             self.settings_window.after(0, update_menu)
         import threading
         threading.Thread(target=fill_process_menu, daemon=True).start()
-        # Tooltip für Prozessauswahl
-        def add_tooltip_settings(widget, text):
+        def add_tooltip_settings(widget, key):
             def get_bg():
                 return "#222222" if ctk.get_appearance_mode() == "Dark" else "#f4f4f4"
-            tooltip = ctk.CTkLabel(self.settings_window, text=text, font=("Arial", 10), text_color="#888", bg_color=get_bg(), wraplength=250, justify="left")
-            self._settings_tooltips.append(tooltip)
+            tooltip = ctk.CTkLabel(self.settings_window, text=self.t(key), font=("Arial", 10), text_color="#888", bg_color=get_bg(), wraplength=250, justify="left")
+            self._settings_tooltips.append((tooltip, key))
             def show(event):
                 tooltip.configure(bg_color=get_bg())
                 x = widget.winfo_rootx() - self.settings_window.winfo_rootx() + 10
                 y = widget.winfo_rooty() - self.settings_window.winfo_rooty() + widget.winfo_height() + 2
-                # Prüfen, ob Tooltip rechts rausgeht
                 self.settings_window.update_idletasks()
                 tooltip.update_idletasks()
                 tw = tooltip.winfo_reqwidth()
@@ -195,19 +345,19 @@ class AutoClickerApp(ctk.CTk):
                 tooltip.place_forget()
             widget.bind("<Enter>", show)
             widget.bind("<Leave>", hide)
-        add_tooltip_settings(failsafe_entry, "Taste, die den Clicker IMMER sofort stoppt (z.B. ESC, F12, F10, Q ...)")
-        add_tooltip_settings(self.process_menu, "Wähle eine Anwendung, in der der AutoClicker aktiv sein darf. 'Alle Anwendungen' = überall.")
+        add_tooltip_settings(failsafe_entry, "failsafe_hint")
+        add_tooltip_settings(self.process_menu, "select_app")
         def on_close():
-            for t in getattr(self, '_settings_tooltips', []):
-                t.place_forget()
-                t.destroy()
             self.settings_window.destroy()
         self.settings_window.protocol("WM_DELETE_WINDOW", on_close)
 
     def save_settings(self):
-        # Fensterposition und Theme speichern
         x = self.winfo_x()
         y = self.winfo_y()
+        selected_process = self.selected_process.get() if hasattr(self, 'selected_process') else "all_apps"
+        if selected_process == self.t("all_apps"):
+            selected_process = "all_apps"
+        # Store button as int (0=left, 1=right, 2=middle)
         data = {
             "kps": self.kps.get(),
             "button": self.button_choice.get(),
@@ -216,60 +366,87 @@ class AutoClickerApp(ctk.CTk):
             "window_x": x,
             "window_y": y,
             "theme": self.theme_mode.get(),
-            "minimize_to_tray": self.minimize_to_tray_var.get(),
+            "minimize_to_tray": bool(self.minimize_to_tray_var.get()),
             "failsafe_key": self.failsafe_key.get(),
-            "selected_process": self.selected_process.get() if hasattr(self, 'selected_process') else "Alle Anwendungen"
+            "selected_process": selected_process,
+            "language": self.language.get()
         }
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump(data, f)
+        import json
+        try:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
 
     def load_settings(self):
+        import json
+        import os
+        defaults = {
+            "kps": 10,
+            "button": 1,  # right
+            "hotkey": "F6",
+            "mode": "Hold",
+            "window_x": 760,
+            "window_y": 197,
+            "theme": "Dark",
+            "minimize_to_tray": False,
+            "failsafe_key": "F9",
+            "selected_process": "all_apps",
+            "language": "en"
+        }
+        def recursive_update(d, defaults):
+            for k, v in defaults.items():
+                if k not in d:
+                    d[k] = v
+                elif isinstance(v, dict) and isinstance(d[k], dict):
+                    recursive_update(d[k], v)
+            return d
         if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, "r") as f:
-                data = json.load(f)
-                self.kps.set(data.get("kps", 10))
-                btn = data.get("button", "Links")
-                if btn in self.button_map:
-                    self.button_choice.set(btn)
-                elif btn in self.button_map.values():
-                    for k, v in self.button_map.items():
-                        if v == btn:
-                            self.button_choice.set(k)
-                            break
+            try:
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data = recursive_update(data, defaults)
+                # Convert old string button values to int
+                if isinstance(data["button"], str):
+                    data["button"] = self.button_name_to_idx.get(data["button"], 1)
+                if data.get("selected_process") not in ["all_apps"]:
+                    if data["selected_process"] in [self.t("all_apps"), self.t("load_procs")]:
+                        data["selected_process"] = "all_apps"
+                self.kps.set(data["kps"])
+                self.button_choice.set(data["button"])
+                self.hotkey.set(data["hotkey"])
+                self.mode.set(data["mode"])
+                self.theme_mode.set(data["theme"])
+                self.minimize_to_tray_var.set(bool(data["minimize_to_tray"]))
+                self.failsafe_key.set(data["failsafe_key"])
+                if not hasattr(self, 'selected_process'):
+                    self.selected_process = ctk.StringVar()
+                if data["selected_process"] == "all_apps":
+                    self.selected_process.set(self.t("all_apps"))
                 else:
-                    self.button_choice.set("Links")
-                self.hotkey.set(data.get("hotkey", "F6"))
-                self.mode.set(data.get("mode", "Toggle"))
-                # Fensterposition wiederherstellen
-                x = data.get("window_x")
-                y = data.get("window_y")
-                if x is not None and y is not None:
-                    self.geometry(f"+{x}+{y}")
-                # Theme wiederherstellen
-                theme = data.get("theme")
-                if theme in ("Dark", "Light"):
-                    self.theme_mode.set(theme)
-                    self.toggle_theme()
-                # Erweiterte Einstellungen
-                self.minimize_to_tray_var.set(data.get("minimize_to_tray", False))
-                self.failsafe_key.set(data.get("failsafe_key", "ESC"))
-                # Prozessauswahl
-                if hasattr(self, 'selected_process'):
-                    self.selected_process.set(data.get("selected_process", "Alle Anwendungen"))
+                    self.selected_process.set(data["selected_process"])
+                self.language.set(data["language"])
+                try:
+                    self.geometry(f"400x700+{data['window_x']}+{data['window_y']}")
+                except Exception:
+                    pass
+                self.save_settings()
+            except Exception as e:
+                print(f"Error loading settings: {e}")
+                self.save_settings()
+        else:
+            self.save_settings()
 
     def start_hotkey_listener(self):
-        # Start keyboard listener
         if self.pynput_keyboard_listener is None:
             self.pynput_keyboard_listener = keyboard.Listener(on_press=self.on_key_press, on_release=self.on_key_release)
             self.pynput_keyboard_listener.start()
-        # Start mouse listener
         if self.pynput_mouse_listener is None:
             self.pynput_mouse_listener = mouse.Listener(on_click=self.on_mouse_click)
             self.pynput_mouse_listener.start()
 
     def on_key_press(self, key):
         try:
-            # Konfigurierbare Failsafe-Taste
             pressed = None
             if hasattr(key, 'char') and key.char:
                 pressed = key.char.upper()
@@ -290,7 +467,7 @@ class AutoClickerApp(ctk.CTk):
                 if self.mode.get() == "Hold":
                     self.toggle_clicking()
         except Exception as e:
-            self.set_status(f"Key-Fehler: {e}", color="red", is_error=True)
+            self.set_status(f"Key error: {e}", color="red", is_error=True)
 
     def on_key_release(self, key):
         try:
@@ -302,9 +479,9 @@ class AutoClickerApp(ctk.CTk):
                 released = key.name.upper() if hasattr(key, 'name') else str(key).upper()
             if released == self.hotkey.get().upper() and self.mode.get() == "Hold":
                 self.clicking = False
-                self.set_status("Bereit", color="green")
+                self.set_status("Ready", color="green")
         except Exception as e:
-            self.set_status(f"Key-Fehler: {e}", color="red", is_error=True)
+            self.set_status(f"Key error: {e}", color="red", is_error=True)
 
     def on_mouse_click(self, x, y, button, pressed):
         try:
@@ -318,12 +495,11 @@ class AutoClickerApp(ctk.CTk):
                     self.toggle_clicking()
             if not pressed and btn_name == self.hotkey.get().lower() and self.mode.get() == "Hold":
                 self.clicking = False
-                self.set_status("Bereit", color="green")
+                self.set_status("Ready", color="green")
         except Exception as e:
-            self.set_status(f"Maus-Fehler: {e}", color="red", is_error=True)
+            self.set_status(f"Mouse error: {e}", color="red", is_error=True)
 
     def get_foreground_process_name(self):
-        # Windows: aktives Fenster und Prozessname ermitteln
         try:
             import ctypes
             import psutil
@@ -338,15 +514,16 @@ class AutoClickerApp(ctk.CTk):
             return None, None
 
     def is_clicker_allowed(self):
-        # Prüft, ob der Clicker im aktuellen Prozess aktiv sein darf
+        
         fg_name, fg_pid = self.get_foreground_process_name()
-        # Eigene Fenster blockieren
+        if fg_pid is None:
+            return False
         if fg_name is None:
             return False
         own_names = [os.path.basename(sys.executable), "python.exe", "pythonw.exe"]
         if fg_name.lower() in own_names:
             return False
-        # Settings-Fenster blockieren (Fenstertitel prüfen)
+        
         if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
             try:
                 import ctypes
@@ -354,26 +531,23 @@ class AutoClickerApp(ctk.CTk):
                 hwnd = user32.GetForegroundWindow()
                 title = ctypes.create_unicode_buffer(512)
                 user32.GetWindowTextW(hwnd, title, 512)
-                if "Einstellungen" in title.value:
+                if "Settings" in title.value:
                     return False
             except Exception:
                 pass
-        # Auswahl "Alle Anwendungen" = immer erlaubt
-        if not hasattr(self, 'selected_process') or self.selected_process.get() == "Alle Anwendungen":
+        if not hasattr(self, 'selected_process') or self.selected_process.get() == "All applications":
             return True
         sel = self.selected_process.get()
         if sel.startswith("Alle "):
             return True
         fg_name, fg_pid = self.get_foreground_process_name()
-        # Gruppen-Check: "Name (alle Instanzen)"
-        if sel.endswith("(alle Instanzen)"):
+        if sel.endswith("(all instances)"):
             name = sel[:-16].strip()
             if fg_name == name:
                 return True
-        # Einzelprozess-Check
         for pid, name in self.get_user_processes():
             if isinstance(pid, list):
-                if sel == f"{name} (alle Instanzen)" and fg_name == name:
+                if sel == f"{name} (all instances)" and fg_name == name:
                     return True
             else:
                 pname = f"{name} (PID {pid})"
@@ -391,12 +565,12 @@ class AutoClickerApp(ctk.CTk):
             if self.mode.get() == "Toggle":
                 if not self.clicking:
                     self.clicking = True
-                    self.set_status("AutoClicker aktiv", color="blue")
+                    self.set_status("AutoClicker active", color="blue")
                     self.click_thread = threading.Thread(target=self.click_loop, daemon=True)
                     self.click_thread.start()
                 else:
                     self.clicking = False
-                    self.set_status("Bereit", color="green")
+                    self.set_status("Ready", color="green")
             elif self.mode.get() == "Hold":
                 if not self.clicking:
                     self.clicking = True
@@ -404,31 +578,31 @@ class AutoClickerApp(ctk.CTk):
                     self.click_thread = threading.Thread(target=self.click_loop, daemon=True)
                     self.click_thread.start()
         except Exception as e:
-            self.set_status(f"Fehler beim Starten: {e}", color="red", is_error=True)
+            self.set_status(f"Error starting: {e}", color="red", is_error=True)
 
     def click_loop(self):
         try:
-            btn_display = self.button_choice.get()
-            btn = self.button_map.get(btn_display, "left")
+            btn_idx = self.button_choice.get()
+            btn = self.button_map.get(btn_idx, "left")
             btn_map = {'left': mouse.Button.left, 'right': mouse.Button.right, 'middle': mouse.Button.middle}
             m = mouse.Controller()
             while self.clicking:
                 if not self.is_clicker_allowed():
                     self.clicking = False
-                    self.set_status("Nicht im gewählten Programm!", color="orange", is_error=True)
+                    self.set_status("Not allowed in the selected program!", color="orange", is_error=True)
                     break
                 m.press(btn_map[btn])
                 m.release(btn_map[btn])
                 time.sleep(1.0 / max(1, self.kps.get()))
-            self.set_status("Bereit", color="green")
+            self.set_status("Ready", color="green")
         except Exception as e:
-            self.set_status(f"Klick-Fehler: {e}", color="red", is_error=True)
+            self.set_status(f"Click error: {e}", color="red", is_error=True)
             self.clicking = False
 
     def change_hotkey(self):
         self.setting_hotkey = True
         self.hotkey.set('...')
-        self.set_status("Hotkey wählen...", color="orange")
+        self.set_status("Choose hotkey...", color="orange")
         self.after(100, self.wait_for_new_hotkey)
 
     def wait_for_new_hotkey(self):
@@ -444,7 +618,7 @@ class AutoClickerApp(ctk.CTk):
                     self.hotkey.set(str(key).upper())
                 self.save_settings()
                 self.setting_hotkey = False
-                self.set_status("Bereit", color="green")
+                self.set_status("Ready", color="green")
                 self._hotkey_set = True
                 listener.stop()
                 try:
@@ -459,7 +633,7 @@ class AutoClickerApp(ctk.CTk):
                 self.hotkey.set(btn_name)
                 self.save_settings()
                 self.setting_hotkey = False
-                self.set_status("Bereit", color="green")
+                self.set_status("Ready", color="green")
                 self._hotkey_set = True
                 m_listener.stop()
                 try:
@@ -473,20 +647,20 @@ class AutoClickerApp(ctk.CTk):
         self.clicking = False
         self.failsafe_active = True
         self.failsafe_time = time.time() + 10
-        self.set_status("Failsafe aktiv", color="red")
+        self.set_status("Failsafe active", color="red")
         self.after(1000, self.failsafe_cooldown)
 
     def failsafe_cooldown(self):
         if time.time() < self.failsafe_time:
-            self.set_status("Failsafe aktiv", color="red")
+            self.set_status("Failsafe active", color="red")
             self.after(1000, self.failsafe_cooldown)
         else:
             self.failsafe_active = False
-            self.set_status("Bereit", color="green")
+            self.set_status("Ready", color="green")
 
     def set_status(self, text, color="green", is_error=False):
         if self.failsafe_active:
-            text = f"Failsafe aktiv ({max(0, int(self.failsafe_time - time.time()))}s)"
+            text = f"Failsafe activ ({max(0, int(self.failsafe_time - time.time()))}s)"
             color = "red"
         if is_error:
             self.error_label.configure(text=text)
@@ -504,7 +678,7 @@ class AutoClickerApp(ctk.CTk):
 
     def minimize_to_tray(self):
         if pystray is None:
-            self.set_status("pystray/Pillow nicht installiert!", color="red", is_error=True)
+            self.set_status("pystray/Pillow not installed!", color="red", is_error=True)
             return
         self.withdraw()
         try:
@@ -516,8 +690,8 @@ class AutoClickerApp(ctk.CTk):
             d = ImageDraw.Draw(tray_icon_img)
             d.ellipse((16, 16, 48, 48), fill='#ffffff')
         menu = pystray.Menu(
-            pystray.MenuItem('Öffnen', self.restore_from_tray),
-            pystray.MenuItem('Beenden', self.exit_from_tray)
+            pystray.MenuItem('Open', self.restore_from_tray),
+            pystray.MenuItem('Exit', self.exit_from_tray)
         )
         self.tray_icon = pystray.Icon("AutoClicker", tray_icon_img, "AutoClicker", menu)
         threading.Thread(target=self.tray_icon.run, daemon=True).start()
@@ -546,7 +720,6 @@ class AutoClickerApp(ctk.CTk):
         import psutil
         import ctypes
         user_procs = []
-        # Fensterhandle zu Prozess-Map
         def has_visible_window(pid):
             try:
                 user32 = ctypes.windll.user32
@@ -572,7 +745,6 @@ class AutoClickerApp(ctk.CTk):
                 return len(titles) > 0
             except Exception:
                 return False
-        # Prozesse gruppieren nach Name, nur mit sichtbarem Fenster
         name_pid_map = {}
         for proc in psutil.process_iter(['pid', 'name', 'username']):
             try:
@@ -585,14 +757,12 @@ class AutoClickerApp(ctk.CTk):
                             name_pid_map[name].append(proc.info['pid'])
             except Exception:
                 continue
-        # Namen gruppieren, aber alle PIDs merken
         result = []
         for name, pids in name_pid_map.items():
             if len(pids) == 1:
                 result.append((pids[0], name))
             else:
                 result.append((pids, name))
-        # Sortiert nach Name
         return sorted(result, key=lambda x: x[1].lower())
 
 if __name__ == "__main__":
