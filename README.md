@@ -45,7 +45,8 @@ This project is licensed under the MIT License.
 Developed by taker99.
 
 ## Screenshots
-![Main Window](gear.png)
+![Main Window](assets/AutoClickerBytaker.png)
+![Settings Window](assets/AutoClickerBytakerSettings.png)
 
 ---
 Feel free to contribute or open issues on GitHub!
