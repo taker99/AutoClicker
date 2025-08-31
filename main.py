@@ -196,6 +196,7 @@ class AutoClickerApp(ctk.CTk):
         def on_mouse_menu_select(choice):
             idx = self.button_name_to_idx.get(choice, 1)
             self.button_choice.set(idx)
+            self.save_settings()
         mouse_menu = ctk.CTkOptionMenu(self, variable=ctk.StringVar(value=self.button_names[self.language.get()][self.button_choice.get()]),
                                        values=self.button_names[self.language.get()],
                                        command=on_mouse_menu_select)
@@ -215,12 +216,13 @@ class AutoClickerApp(ctk.CTk):
         mode_label = ctk.CTkLabel(self, text=self.t("mode"), font=("Arial", 13))
         mode_label.pack(pady=(15, 0))
         self._lang_widgets.append((mode_label, "mode"))
-        mode_menu = ctk.CTkOptionMenu(self, variable=self.mode, values=[self.t("toggle"), self.t("hold")])
+        def on_mode_menu_select(choice):
+            self.mode.set(choice)
+            self.save_settings()
+        mode_menu = ctk.CTkOptionMenu(self, variable=self.mode, values=[self.t("toggle"), self.t("hold")], command=on_mode_menu_select)
         mode_menu.pack(pady=5)
         # Save/Exit
-        save_btn = ctk.CTkButton(self, text=self.t("save"), command=self.save_settings)
-        save_btn.pack(pady=(20, 0))
-        self._lang_widgets.append((save_btn, "save"))
+    # Remove save button, autosave will be used
         exit_btn = ctk.CTkButton(self, text=self.t("exit"), command=self.destroy)
         exit_btn.pack(pady=5)
         self._lang_widgets.append((exit_btn, "exit"))
@@ -276,23 +278,57 @@ class AutoClickerApp(ctk.CTk):
             return
         self.settings_window = ctk.CTkToplevel(self)
         self.settings_window.title(self.t("settings"))
-        self.settings_window.geometry("320x380")
         self.settings_window.resizable(False, False)
+        # Position settings window smartly
+        try:
+            self.update_idletasks()
+            main_x = self.winfo_x()
+            main_y = self.winfo_y()
+            main_w = self.winfo_width()
+            main_h = self.winfo_height()
+            settings_w = 320
+            settings_h = 380
+            # Get screen width
+            screen_w = self.winfo_screenwidth()
+            # Try to open to the right
+            right_x = main_x + main_w
+            left_x = main_x - settings_w
+            # If enough space to the right, open there
+            if right_x + settings_w < screen_w:
+                pos_x = right_x
+            # Else, if enough space to the left, open there
+            elif left_x > 0:
+                pos_x = left_x
+            # Else, overlap main window
+            else:
+                pos_x = main_x + 40
+            pos_y = main_y
+            self.settings_window.geometry(f"{settings_w}x{settings_h}+{pos_x}+{pos_y}")
+        except Exception:
+            self.settings_window.geometry("320x380")
         self._settings_lang_widgets = []
         self._settings_tooltips = []
         lang_label = ctk.CTkLabel(self.settings_window, text=self.t("language"), font=("Arial", 13))
         lang_label.pack(pady=(15, 0))
         self._settings_lang_widgets.append((lang_label, "language"))
-        lang_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.language, values=["en", "de"], command=lambda _: self.save_settings())
+        def on_lang_menu_select(choice):
+            self.language.set(choice)
+            self.save_settings()
+        lang_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.language, values=["en", "de"], command=on_lang_menu_select)
         lang_menu.pack(pady=5)
         self._settings_lang_widgets.append((lang_menu, "language"))
         theme_label = ctk.CTkLabel(self.settings_window, text=self.t("theme"), font=("Arial", 13))
         theme_label.pack(pady=(15, 0))
         self._settings_lang_widgets.append((theme_label, "theme"))
-        theme_switch = ctk.CTkSwitch(self.settings_window, text=self.t("dark_mode"), variable=self.theme_mode, onvalue="Dark", offvalue="Light", command=self.toggle_theme)
+        def on_theme_switch():
+            self.toggle_theme()
+            self.save_settings()
+        theme_switch = ctk.CTkSwitch(self.settings_window, text=self.t("dark_mode"), variable=self.theme_mode, onvalue="Dark", offvalue="Light", command=on_theme_switch)
         theme_switch.pack(pady=5)
         self._settings_lang_widgets.append((theme_switch, "dark_mode"))
-        tray_check = ctk.CTkCheckBox(self.settings_window, text=self.t("minimize_tray"), variable=self.minimize_to_tray_var)
+        def on_tray_check():
+            self.save_settings()
+        tray_check = ctk.CTkCheckBox(self.settings_window, text=self.t("minimize_tray"), variable=self.minimize_to_tray_var, command=on_tray_check)
         tray_check.pack(anchor="w", pady=(15, 0), padx=20)
         self._settings_lang_widgets.append((tray_check, "minimize_tray"))
         failsafe_label = ctk.CTkLabel(self.settings_window, text=self.t("failsafe_key"))
@@ -306,7 +342,34 @@ class AutoClickerApp(ctk.CTk):
 
         if not hasattr(self, 'selected_process'):
             self.selected_process = ctk.StringVar(value="all_apps")
-        self.process_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.selected_process, values=[self.t("load_procs")])
+        def on_process_menu_select(choice):
+            self.selected_process.set(choice)
+            self.save_settings()
+        self.process_menu = ctk.CTkOptionMenu(self.settings_window, variable=self.selected_process, values=[self.t("load_procs")], command=on_process_menu_select)
+        # --- AUTOSAVE BINDINGS ---
+        # Main window autosave
+        self.kps.trace_add('write', lambda *_: self.save_settings())
+        self.button_choice.trace_add('write', lambda *_: self.save_settings())
+        self.hotkey.trace_add('write', lambda *_: self.save_settings())
+        self.mode.trace_add('write', lambda *_: self.save_settings())
+        self.theme_mode.trace_add('write', lambda *_: self.save_settings())
+        self.minimize_to_tray_var.trace_add('write', lambda *_: self.save_settings())
+        self.failsafe_key.trace_add('write', lambda *_: self.save_settings())
+        self.language.trace_add('write', lambda *_: self.save_settings())
+        # Settings window autosave
+        if hasattr(self, 'selected_process'):
+            self.selected_process.trace_add('write', lambda *_: self.save_settings())
+        # Settings window widgets autosave
+        if 'lang_menu' in locals():
+            lang_menu.configure(command=lambda *_: self.save_settings())
+        if 'theme_switch' in locals():
+            theme_switch.configure(command=lambda *_: (self.toggle_theme(), self.save_settings()))
+        if 'tray_check' in locals():
+            tray_check.configure(command=lambda *_: self.save_settings())
+        if 'failsafe_entry' in locals():
+            failsafe_entry.bind('<KeyRelease>', lambda e: self.save_settings())
+        if 'only_active_label' in locals() and hasattr(self, 'selected_process'):
+            self.selected_process.trace_add('write', lambda *_: self.save_settings())
         self.process_menu.pack(anchor="w", padx=20, pady=(0, 5))
         self.process_menu.configure(state="disabled")
         def fill_process_menu():
